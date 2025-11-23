@@ -1,0 +1,1875 @@
+<!doctype html>
+<html lang="ja">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multi Room Chat</title>
+  <script src="/_sdk/data_sdk.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      height: 100%;
+      overflow: hidden;
+    }
+
+    html {
+      height: 100%;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    .container {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    @media (min-width: 768px) {
+      .container {
+        max-width: 1200px;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .container {
+        padding: 10px;
+      }
+    }
+
+    .header {
+      background: white;
+      padding: 12px 20px;
+      border-radius: 12px 12px 0 0;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      margin: 0;
+      color: #667eea;
+      font-size: 24px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .menu-btn {
+      padding: 8px 16px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .menu-btn:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+    }
+
+    .room-info-compact {
+      font-size: 14px;
+      color: #667eea;
+      font-weight: 600;
+    }
+
+    .menu-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .menu-overlay.active {
+      display: flex;
+    }
+
+    .menu-panel {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80%;
+      overflow-y: auto;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .menu-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #667eea;
+      margin-bottom: 20px;
+    }
+
+    .menu-section {
+      margin-bottom: 25px;
+    }
+
+    .menu-section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 12px;
+    }
+
+    .room-selector {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+
+    .room-btn {
+      padding: 10px 20px;
+      border: 2px solid #667eea;
+      background: white;
+      color: #667eea;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .room-btn:hover {
+      background: #667eea;
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .room-btn.active {
+      background: #667eea;
+      color: white;
+    }
+
+    .room-input-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .room-input-group input {
+      flex: 1;
+      padding: 10px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .room-input-group button {
+      padding: 10px 20px;
+      background: #764ba2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .room-input-group button:hover {
+      background: #5a3780;
+      transform: translateY(-2px);
+    }
+
+    .delete-all-btn {
+      padding: 10px 20px;
+      background: #ff4444;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .delete-all-btn:hover {
+      background: #ff2222;
+      transform: translateY(-2px);
+    }
+
+    .delete-all-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .close-menu-btn {
+      padding: 10px 20px;
+      background: #e0e0e0;
+      color: #333;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      width: 100%;
+      margin-top: 15px;
+    }
+
+    .close-menu-btn:hover {
+      background: #d0d0d0;
+    }
+
+    .chat-area {
+      flex: 1;
+      background: white;
+      padding: 20px;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    .message {
+      margin-bottom: 15px;
+      padding: 12px 15px;
+      background: #f8f9ff;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+      position: relative;
+    }
+
+    .message.reply {
+      margin-left: 30px;
+      border-left-color: #764ba2;
+    }
+
+    .message.my-message {
+      border-left: 4px solid #00cc66;
+      background: #e6fff2;
+    }
+
+    .message-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .username {
+      font-weight: 700;
+      color: #667eea;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .role-tag {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .role-tag.admin {
+      background: #ff4444;
+      color: white;
+    }
+
+    .role-tag.developer {
+      background: #4444ff;
+      color: white;
+    }
+
+    .role-tag.room-admin {
+      background: #ff9800;
+      color: white;
+    }
+
+    .role-tag.editor {
+      background: #4caf50;
+      color: white;
+    }
+
+    .role-tag.viewer {
+      background: #9e9e9e;
+      color: white;
+    }
+
+    .my-tag {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      background: #00cc66;
+      color: white;
+    }
+
+    .message.user-admin {
+      background: #ffe6e6;
+    }
+
+    .message.user-developer {
+      background: #e6e6ff;
+    }
+
+    .timestamp {
+      font-size: 11px;
+      color: #999;
+    }
+
+    .message-content {
+      color: #333;
+      line-height: 1.6;
+      word-wrap: break-word;
+    }
+
+    .message-content h1, .message-content h2, .message-content h3 {
+      margin: 10px 0 5px 0;
+    }
+
+    .message-content code {
+      background: #f0f0f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+    }
+
+    .message-content pre {
+      background: #f0f0f0;
+      padding: 10px;
+      border-radius: 6px;
+      overflow-x: auto;
+    }
+
+    .reply-indicator {
+      font-size: 12px;
+      color: #764ba2;
+      margin-bottom: 5px;
+      font-style: italic;
+    }
+
+    .message-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .action-btn {
+      padding: 5px 12px;
+      font-size: 12px;
+      background: #e0e0e0;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .action-btn:hover {
+      background: #667eea;
+      color: white;
+    }
+
+    .delete-btn {
+      background: #ff6b6b;
+      color: white;
+    }
+
+    .delete-btn:hover {
+      background: #ff5252;
+    }
+
+    .input-area {
+      background: white;
+      padding: 20px;
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    }
+
+    .reply-preview {
+      background: #f8f9ff;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: none;
+      border-left: 3px solid #764ba2;
+    }
+
+    .reply-preview.active {
+      display: block;
+    }
+
+    .reply-preview-text {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 5px;
+    }
+
+    .cancel-reply {
+      font-size: 12px;
+      color: #764ba2;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .username-input {
+      width: 100%;
+      padding: 10px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .message-input {
+      width: 100%;
+      min-height: 80px;
+      padding: 12px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      margin-bottom: 10px;
+    }
+
+    .send-btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .send-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .send-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .format-hint {
+      font-size: 12px;
+      color: #999;
+      margin-top: 5px;
+    }
+
+    .admin-section {
+      margin-bottom: 15px;
+    }
+
+    .show-admin-btn {
+      padding: 10px 20px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      font-size: 14px;
+      width: 100%;
+    }
+
+    .show-admin-btn:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+    }
+
+    .admin-login {
+      margin-top: 10px;
+      padding: 15px;
+      background: #fff9e6;
+      border-radius: 8px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .admin-password-input {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px 15px;
+      border: 2px solid #ffd700;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .admin-login-btn {
+      padding: 10px 20px;
+      background: #ffd700;
+      color: #333;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .admin-login-btn:hover {
+      background: #ffed4e;
+      transform: translateY(-2px);
+    }
+
+    .admin-status {
+      font-size: 14px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 6px;
+    }
+
+    .admin-status.logged-in {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .admin-status.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .message.admin-deletable {
+      border-left-color: #ffd700;
+    }
+
+    .delete-btn.admin-mode {
+      background: #ffd700;
+      color: #333;
+    }
+
+    .delete-btn.admin-mode:hover {
+      background: #ffed4e;
+    }
+
+    .delete-form {
+      display: none;
+      margin-top: 8px;
+      padding: 10px;
+      background: #fff3cd;
+      border-radius: 6px;
+    }
+
+    .delete-form.active {
+      display: block;
+    }
+
+    .delete-form input {
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-right: 8px;
+      font-size: 12px;
+    }
+
+    .delete-form button {
+      padding: 6px 12px;
+      font-size: 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+
+    .confirm-delete {
+      background: #ff6b6b;
+      color: white;
+    }
+
+    .cancel-delete {
+      background: #e0e0e0;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #667eea;
+      font-style: italic;
+    }
+
+    .delete-all-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .delete-all-modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #ff4444;
+      margin-bottom: 15px;
+    }
+
+    .modal-text {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .modal-btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .modal-btn.confirm {
+      background: #ff4444;
+      color: white;
+    }
+
+    .modal-btn.confirm:hover {
+      background: #ff2222;
+    }
+
+    .modal-btn.cancel {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .modal-btn.cancel:hover {
+      background: #d0d0d0;
+    }
+
+    .permission-management {
+      margin-top: 15px;
+      padding: 15px;
+      background: #fff3e6;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .permission-management.active {
+      display: block;
+    }
+
+    .permission-item {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .permission-item input {
+      flex: 1;
+      min-width: 120px;
+      padding: 8px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .permission-item select {
+      padding: 8px;
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .permission-item button {
+      padding: 8px 15px;
+      background: #ff6b6b;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .add-permission-btn {
+      width: 100%;
+      padding: 10px;
+      background: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .manage-permissions-btn {
+      width: 100%;
+      padding: 10px 20px;
+      background: #ff9800;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    .manage-permissions-btn:hover {
+      background: #f57c00;
+    }
+
+    .permission-status {
+      padding: 10px;
+      background: #e3f2fd;
+      border-radius: 8px;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #1976d2;
+      font-weight: 600;
+      text-align: center;
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body>
+  <div class="container">
+   <div class="header">
+    <h1 id="app-title">マルチルームチャット</h1>
+    <div class="header-actions"><span class="room-info-compact" id="current-room-name-compact">みんなの部屋</span> <button id="menu-btn" class="menu-btn">メニュー</button>
+    </div>
+   </div>
+   <div class="chat-area" id="chat-area">
+    <div class="loading">
+     メッセージを読み込み中...
+    </div>
+   </div>
+   <div class="input-area">
+    <div class="reply-preview" id="reply-preview">
+     <div class="reply-preview-text" id="reply-preview-text"></div><span class="cancel-reply" id="cancel-reply">返信をキャンセル</span>
+    </div><input type="text" id="username-input" class="username-input" placeholder="ユーザー名"> <textarea id="message-input" class="message-input" placeholder="メッセージを入力 (Markdown/HTML対応)"></textarea> <button id="send-btn" class="send-btn">送信</button>
+    <div class="format-hint">
+     Markdown記法とHTMLタグが使えます (例: **太字**, *斜体*, # 見出し, &lt;b&gt;太字&lt;/b&gt;)
+    </div>
+   </div>
+  </div>
+  <div class="menu-overlay" id="menu-overlay">
+   <div class="menu-panel">
+    <div class="menu-title">
+     設定メニュー
+    </div>
+    <div class="menu-section">
+     <div class="menu-section-title">
+      ルーム選択
+     </div>
+     <div class="room-selector"><button class="room-btn active" data-room="shared" id="shared-room-btn">みんなの部屋</button> <button class="room-btn" data-room="private">プライベートルーム</button>
+     </div>
+     <div class="room-input-group" id="room-input-group" style="display: none;"><input type="text" id="room-id-input" placeholder="ルームIDを入力 (例: room123)"> <button id="join-room-btn">参加</button> <button id="create-room-btn">新規作成</button>
+     </div>
+     <div id="public-room-controls" style="display: none; margin-top: 10px;"><label style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #666;"> <input type="checkbox" id="make-public-checkbox" style="width: 18px; height: 18px; cursor: pointer;"> <span>このルームを公開掲示板に表示する</span> </label> <input type="text" id="room-description-input" placeholder="ルームの説明を入力 (任意)" style="width: 100%; padding: 8px; margin-top: 8px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px; display: none;">
+     </div>
+    </div>
+    <div class="menu-section">
+     <div class="menu-section-title">
+      公開ルーム掲示板
+     </div>
+     <div id="public-rooms-list" style="max-height: 200px; overflow-y: auto; background: #f8f9ff; border-radius: 8px; padding: 10px;">
+      <div style="text-align: center; color: #999; font-size: 13px;">
+       読み込み中...
+      </div>
+     </div>
+    </div>
+    <div class="menu-section" id="developer-rooms-section" style="display: none;">
+     <div class="menu-section-title">
+      🔧 全プライベートルーム (開発者専用)
+     </div>
+     <div id="developer-rooms-list" style="max-height: 200px; overflow-y: auto; background: #e6e6ff; border-radius: 8px; padding: 10px;">
+      <div style="text-align: center; color: #999; font-size: 13px;">
+       読み込み中...
+      </div>
+     </div>
+    </div>
+    <div class="menu-section">
+     <div class="menu-section-title">
+      現在のルーム
+     </div>
+     <div style="padding: 10px; background: #f8f9ff; border-radius: 8px; margin-bottom: 10px;"><strong id="current-room-name">みんなの部屋</strong>
+     </div>
+     <div id="permission-status" class="permission-status" style="display: none;"></div><button id="manage-permissions-btn" class="manage-permissions-btn" style="display: none;">権限管理</button>
+     <div id="permission-management" class="permission-management">
+      <div style="font-weight: 700; margin-bottom: 10px; color: #ff9800;">
+       ルーム権限管理
+      </div>
+      <div id="permissions-list"></div><button id="add-permission-btn" class="add-permission-btn">新しいユーザーを追加</button>
+     </div><button id="delete-all-btn" class="delete-all-btn">このルームの全メッセージを削除</button>
+    </div>
+    <div class="menu-section admin-section">
+     <div class="menu-section-title">
+      認証
+     </div><button id="show-admin-login" class="show-admin-btn">認証情報を入力</button>
+     <div class="admin-login" id="admin-login" style="display: none;"><input type="password" id="admin-password-input" placeholder="パスワードを入力" class="admin-password-input"> <button id="admin-login-btn" class="admin-login-btn">ログイン</button>
+     </div><span id="admin-status" class="admin-status"></span>
+    </div><button id="close-menu-btn" class="close-menu-btn">閉じる</button>
+   </div>
+  </div>
+  <div class="delete-all-modal" id="delete-all-modal">
+   <div class="modal-content">
+    <div class="modal-title">
+     全メッセージ削除
+    </div>
+    <div class="modal-text">
+     このルームの全てのメッセージを削除しますか？<br>
+      この操作は取り消せません。
+    </div>
+    <div class="modal-buttons"><button class="modal-btn cancel" id="cancel-delete-all">キャンセル</button> <button class="modal-btn confirm" id="confirm-delete-all">削除する</button>
+    </div>
+   </div>
+  </div>
+  <script>
+    const defaultConfig = {
+      app_title: "マルチルームチャット",
+      shared_room_name: "みんなの部屋",
+      primary_color: "#667eea",
+      secondary_color: "#764ba2",
+      background_color: "#f8f9ff",
+      text_color: "#333333",
+      accent_color: "#ff6b6b"
+    };
+
+    let currentRoom = "shared";
+    let currentRoomId = "shared";
+    let replyToMessage = null;
+    let allMessages = [];
+    let userRole = null;
+    let userSeed = null;
+    let publicRooms = [];
+    let roomPermissions = [];
+    const ADMIN_PASSWORD = "Quantime101";
+    const DEVELOPER_PASSWORD = "Realtime";
+
+    function getUserSeed() {
+      let seed = localStorage.getItem('userSeed');
+      if (!seed) {
+        seed = 'seed_' + Date.now().toString(36) + '_' + 
+               Math.random().toString(36).substring(2, 15) + 
+               Math.random().toString(36).substring(2, 15);
+        localStorage.setItem('userSeed', seed);
+      }
+      return seed;
+    }
+
+    function generateRoomId() {
+      return 'room_' + Math.random().toString(36).substring(2, 11);
+    }
+
+    function getRoomPermission(roomId, userSeedOrName, username) {
+      const permission = roomPermissions.find(p => 
+        p.room_id === roomId && 
+        (p.user_seed === userSeedOrName || p.username === userSeedOrName || p.username === username)
+      );
+      return permission ? permission.permission : null;
+    }
+
+    function getMyRoomPermission() {
+      if (currentRoom === 'shared') return 'editor';
+      const username = document.getElementById('username-input').value.trim();
+      return getRoomPermission(currentRoomId, userSeed, username);
+    }
+
+    function isRoomAdmin() {
+      if (userRole === 'developer') return true;
+      const myPermission = getMyRoomPermission();
+      return myPermission === 'room-admin';
+    }
+
+    function canPost() {
+      const myPermission = getMyRoomPermission();
+      return myPermission === 'editor' || myPermission === 'room-admin';
+    }
+
+    function canDelete() {
+      if (userRole === 'admin' || userRole === 'developer') return true;
+      return isRoomAdmin();
+    }
+
+    const dataHandler = {
+      onDataChanged(data) {
+        allMessages = data.filter(item => !item.is_public_room && !item.is_permission);
+        publicRooms = data.filter(item => item.is_public_room === true);
+        roomPermissions = data.filter(item => item.is_permission === true);
+        renderMessages();
+        renderPublicRooms();
+        updatePermissionStatus();
+        if (userRole === 'developer') {
+          renderDeveloperRooms();
+        }
+      }
+    };
+
+    async function init() {
+      userSeed = getUserSeed();
+
+      const savedRole = localStorage.getItem('userRole');
+      if (savedRole) {
+        userRole = savedRole;
+        const statusElement = document.getElementById('admin-status');
+        const developerRoomsSection = document.getElementById('developer-rooms-section');
+        
+        if (userRole === 'admin') {
+          statusElement.textContent = '管理者';
+          statusElement.className = 'admin-status logged-in';
+          statusElement.style.background = '#ffe6e6';
+          statusElement.style.color = '#ff4444';
+          if (developerRoomsSection) {
+            developerRoomsSection.style.display = 'none';
+          }
+        } else if (userRole === 'developer') {
+          statusElement.textContent = '開発者';
+          statusElement.className = 'admin-status logged-in';
+          statusElement.style.background = '#e6e6ff';
+          statusElement.style.color = '#4444ff';
+          if (developerRoomsSection) {
+            developerRoomsSection.style.display = 'block';
+          }
+        }
+      }
+
+      const initResult = await window.dataSdk.init(dataHandler);
+      if (!initResult.isOk) {
+        console.error("Failed to initialize data SDK");
+      }
+
+      if (window.elementSdk) {
+        window.elementSdk.init({
+          defaultConfig,
+          onConfigChange: async (config) => {
+            const appTitle = document.getElementById('app-title');
+            const sharedRoomBtn = document.getElementById('shared-room-btn');
+            
+            if (appTitle) {
+              appTitle.textContent = config.app_title || defaultConfig.app_title;
+              appTitle.style.color = config.primary_color || defaultConfig.primary_color;
+            }
+            
+            if (sharedRoomBtn) {
+              sharedRoomBtn.textContent = config.shared_room_name || defaultConfig.shared_room_name;
+              sharedRoomBtn.style.borderColor = config.primary_color || defaultConfig.primary_color;
+              sharedRoomBtn.style.color = sharedRoomBtn.classList.contains('active') 
+                ? 'white' 
+                : config.primary_color || defaultConfig.primary_color;
+              if (sharedRoomBtn.classList.contains('active')) {
+                sharedRoomBtn.style.background = config.primary_color || defaultConfig.primary_color;
+              }
+            }
+
+            const currentRoomName = document.getElementById('current-room-name');
+            const currentRoomNameCompact = document.getElementById('current-room-name-compact');
+            if (currentRoom === 'shared') {
+              const roomName = config.shared_room_name || defaultConfig.shared_room_name;
+              if (currentRoomName) {
+                currentRoomName.textContent = roomName;
+              }
+              if (currentRoomNameCompact) {
+                currentRoomNameCompact.textContent = roomName;
+              }
+            }
+
+            document.querySelectorAll('.room-btn').forEach(btn => {
+              btn.style.borderColor = config.primary_color || defaultConfig.primary_color;
+              if (!btn.classList.contains('active')) {
+                btn.style.color = config.primary_color || defaultConfig.primary_color;
+              }
+            });
+
+            renderMessages();
+          },
+          mapToCapabilities: (config) => ({
+            recolorables: [
+              {
+                get: () => config.primary_color || defaultConfig.primary_color,
+                set: (value) => {
+                  config.primary_color = value;
+                  window.elementSdk.setConfig({ primary_color: value });
+                }
+              },
+              {
+                get: () => config.secondary_color || defaultConfig.secondary_color,
+                set: (value) => {
+                  config.secondary_color = value;
+                  window.elementSdk.setConfig({ secondary_color: value });
+                }
+              },
+              {
+                get: () => config.background_color || defaultConfig.background_color,
+                set: (value) => {
+                  config.background_color = value;
+                  window.elementSdk.setConfig({ background_color: value });
+                }
+              },
+              {
+                get: () => config.text_color || defaultConfig.text_color,
+                set: (value) => {
+                  config.text_color = value;
+                  window.elementSdk.setConfig({ text_color: value });
+                }
+              },
+              {
+                get: () => config.accent_color || defaultConfig.accent_color,
+                set: (value) => {
+                  config.accent_color = value;
+                  window.elementSdk.setConfig({ accent_color: value });
+                }
+              }
+            ],
+            borderables: [],
+            fontEditable: undefined,
+            fontSizeable: undefined
+          }),
+          mapToEditPanelValues: (config) => new Map([
+            ["app_title", config.app_title || defaultConfig.app_title],
+            ["shared_room_name", config.shared_room_name || defaultConfig.shared_room_name]
+          ])
+        });
+      }
+
+      document.getElementById('menu-btn').addEventListener('click', () => {
+        document.getElementById('menu-overlay').classList.add('active');
+      });
+
+      document.getElementById('close-menu-btn').addEventListener('click', () => {
+        document.getElementById('menu-overlay').classList.remove('active');
+      });
+
+      document.getElementById('menu-overlay').addEventListener('click', (e) => {
+        if (e.target.id === 'menu-overlay') {
+          document.getElementById('menu-overlay').classList.remove('active');
+        }
+      });
+
+      document.querySelectorAll('.room-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const roomType = btn.dataset.room;
+          switchRoom(roomType);
+        });
+      });
+
+      document.getElementById('join-room-btn').addEventListener('click', async () => {
+        const roomId = document.getElementById('room-id-input').value.trim();
+        if (roomId) {
+          currentRoomId = roomId;
+          
+          const makePublic = document.getElementById('make-public-checkbox').checked;
+          const roomDescription = document.getElementById('room-description-input').value.trim();
+          const username = document.getElementById('username-input').value.trim() || '匿名';
+          
+          if (makePublic) {
+            const existingPublicRoom = publicRooms.find(r => r.room_id === roomId);
+            if (!existingPublicRoom) {
+              const publicRoomEntry = {
+                room_id: roomId,
+                username: username,
+                room_description: roomDescription || 'ルームの説明なし',
+                timestamp: new Date().toISOString(),
+                is_public_room: true,
+                room_creator_seed: userSeed,
+                message: '',
+                reply_to_id: null,
+                user_role: null,
+                user_seed: userSeed
+              };
+              
+              await window.dataSdk.create(publicRoomEntry);
+            }
+            
+            document.getElementById('make-public-checkbox').checked = false;
+            document.getElementById('room-description-input').value = '';
+            document.getElementById('room-description-input').style.display = 'none';
+          }
+          
+          updateRoomInfo(roomId);
+          updatePermissionStatus();
+          renderMessages();
+        }
+      });
+
+      document.getElementById('create-room-btn').addEventListener('click', async () => {
+        const newRoomId = generateRoomId();
+        document.getElementById('room-id-input').value = newRoomId;
+        currentRoomId = newRoomId;
+        
+        const username = document.getElementById('username-input').value.trim() || '匿名';
+        
+        const creatorPermission = {
+          room_id: newRoomId,
+          user_seed: userSeed,
+          username: username,
+          permission: 'room-admin',
+          timestamp: new Date().toISOString(),
+          is_permission: true,
+          message: '',
+          reply_to_id: null,
+          user_role: null
+        };
+        
+        await window.dataSdk.create(creatorPermission);
+        
+        const makePublic = document.getElementById('make-public-checkbox').checked;
+        const roomDescription = document.getElementById('room-description-input').value.trim();
+        
+        if (makePublic) {
+          const publicRoomEntry = {
+            room_id: newRoomId,
+            username: username,
+            room_description: roomDescription || 'ルームの説明なし',
+            timestamp: new Date().toISOString(),
+            is_public_room: true,
+            room_creator_seed: userSeed,
+            message: '',
+            reply_to_id: null,
+            user_role: null,
+            user_seed: userSeed
+          };
+          
+          await window.dataSdk.create(publicRoomEntry);
+          
+          document.getElementById('make-public-checkbox').checked = false;
+          document.getElementById('room-description-input').value = '';
+          document.getElementById('room-description-input').style.display = 'none';
+        }
+        
+        updateRoomInfo(newRoomId);
+        updatePermissionStatus();
+        renderMessages();
+      });
+
+      document.getElementById('send-btn').addEventListener('click', sendMessage);
+      document.getElementById('message-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          sendMessage();
+        }
+      });
+
+      document.getElementById('cancel-reply').addEventListener('click', () => {
+        replyToMessage = null;
+        document.getElementById('reply-preview').classList.remove('active');
+      });
+
+      document.getElementById('show-admin-login').addEventListener('click', () => {
+        const adminLogin = document.getElementById('admin-login');
+        if (adminLogin.style.display === 'none') {
+          adminLogin.style.display = 'flex';
+        } else {
+          adminLogin.style.display = 'none';
+        }
+      });
+
+      document.getElementById('admin-login-btn').addEventListener('click', () => {
+        const passwordInput = document.getElementById('admin-password-input');
+        const password = passwordInput.value;
+        const statusElement = document.getElementById('admin-status');
+        
+        if (password === ADMIN_PASSWORD) {
+          userRole = 'admin';
+          localStorage.setItem('userRole', 'admin');
+          passwordInput.value = '';
+          document.getElementById('admin-login').style.display = 'none';
+          
+          const statusElement = document.getElementById('admin-status');
+          statusElement.textContent = '管理者';
+          statusElement.className = 'admin-status logged-in';
+          statusElement.style.background = '#ffe6e6';
+          statusElement.style.color = '#ff4444';
+          
+          const developerRoomsSection = document.getElementById('developer-rooms-section');
+          if (developerRoomsSection) {
+            developerRoomsSection.style.display = 'none';
+          }
+          
+          renderMessages();
+        } else if (password === DEVELOPER_PASSWORD) {
+          userRole = 'developer';
+          localStorage.setItem('userRole', 'developer');
+          passwordInput.value = '';
+          document.getElementById('admin-login').style.display = 'none';
+          
+          const statusElement = document.getElementById('admin-status');
+          statusElement.textContent = '開発者';
+          statusElement.className = 'admin-status logged-in';
+          statusElement.style.background = '#e6e6ff';
+          statusElement.style.color = '#4444ff';
+          
+          const developerRoomsSection = document.getElementById('developer-rooms-section');
+          if (developerRoomsSection) {
+            developerRoomsSection.style.display = 'block';
+            renderDeveloperRooms();
+          }
+          
+          updatePermissionStatus();
+          renderMessages();
+        } else {
+          statusElement.textContent = 'パスワードが違います';
+          statusElement.className = 'admin-status error';
+          setTimeout(() => {
+            statusElement.textContent = '';
+            statusElement.className = 'admin-status';
+          }, 3000);
+        }
+      });
+
+      document.getElementById('admin-password-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          document.getElementById('admin-login-btn').click();
+        }
+      });
+
+      document.getElementById('delete-all-btn').addEventListener('click', () => {
+        if (!canDelete()) {
+          const statusElement = document.getElementById('admin-status');
+          statusElement.textContent = '権限がありません';
+          statusElement.className = 'admin-status error';
+          setTimeout(() => {
+            statusElement.textContent = '';
+            statusElement.className = 'admin-status';
+          }, 3000);
+          return;
+        }
+        document.getElementById('delete-all-modal').classList.add('active');
+      });
+
+      document.getElementById('cancel-delete-all').addEventListener('click', () => {
+        document.getElementById('delete-all-modal').classList.remove('active');
+      });
+
+      document.getElementById('confirm-delete-all').addEventListener('click', async () => {
+        await deleteAllMessages();
+        document.getElementById('delete-all-modal').classList.remove('active');
+      });
+
+      document.getElementById('make-public-checkbox').addEventListener('change', (e) => {
+        const descInput = document.getElementById('room-description-input');
+        if (e.target.checked) {
+          descInput.style.display = 'block';
+        } else {
+          descInput.style.display = 'none';
+        }
+      });
+
+      document.getElementById('manage-permissions-btn').addEventListener('click', () => {
+        const permissionManagement = document.getElementById('permission-management');
+        if (permissionManagement.classList.contains('active')) {
+          permissionManagement.classList.remove('active');
+        } else {
+          permissionManagement.classList.add('active');
+          renderPermissionsList();
+        }
+      });
+
+      document.getElementById('add-permission-btn').addEventListener('click', () => {
+        addPermissionInput();
+      });
+    }
+
+    function updatePermissionStatus() {
+      const permissionStatus = document.getElementById('permission-status');
+      const managePermissionsBtn = document.getElementById('manage-permissions-btn');
+      
+      if (currentRoom === 'shared') {
+        permissionStatus.style.display = 'none';
+        managePermissionsBtn.style.display = 'none';
+        return;
+      }
+
+      const myPermission = getMyRoomPermission();
+      
+      if (!myPermission) {
+        permissionStatus.textContent = '⚠️ あなたの権限: 観覧者（閲覧のみ）';
+        permissionStatus.style.display = 'block';
+        managePermissionsBtn.style.display = 'none';
+      } else if (myPermission === 'viewer') {
+        permissionStatus.textContent = '👁️ あなたの権限: 観覧者（閲覧のみ）';
+        permissionStatus.style.display = 'block';
+        managePermissionsBtn.style.display = 'none';
+      } else if (myPermission === 'editor') {
+        permissionStatus.textContent = '✏️ あなたの権限: 編集者（投稿可能）';
+        permissionStatus.style.display = 'block';
+        managePermissionsBtn.style.display = 'none';
+      } else if (myPermission === 'room-admin') {
+        permissionStatus.textContent = '👑 あなたの権限: 管理者（全権限）';
+        permissionStatus.style.display = 'block';
+        managePermissionsBtn.style.display = 'block';
+      }
+
+      if (userRole === 'developer') {
+        permissionStatus.textContent = '🔧 開発者権限（全権限）';
+        permissionStatus.style.display = 'block';
+        managePermissionsBtn.style.display = 'block';
+      }
+    }
+
+    function renderPermissionsList() {
+      const permissionsList = document.getElementById('permissions-list');
+      permissionsList.innerHTML = '';
+
+      const currentRoomPermissions = roomPermissions.filter(p => p.room_id === currentRoomId);
+
+      currentRoomPermissions.forEach(perm => {
+        const permItem = document.createElement('div');
+        permItem.className = 'permission-item';
+
+        const usernameInput = document.createElement('input');
+        usernameInput.type = 'text';
+        usernameInput.value = perm.username;
+        usernameInput.placeholder = 'ユーザー名';
+        usernameInput.disabled = true;
+
+        const permissionSelect = document.createElement('select');
+        ['viewer', 'editor', 'room-admin'].forEach(role => {
+          const option = document.createElement('option');
+          option.value = role;
+          option.textContent = role === 'viewer' ? '観覧者' : role === 'editor' ? '編集者' : '管理者';
+          if (perm.permission === role) {
+            option.selected = true;
+          }
+          permissionSelect.appendChild(option);
+        });
+
+        permissionSelect.addEventListener('change', async () => {
+          const updatedPerm = {...perm, permission: permissionSelect.value};
+          await window.dataSdk.update(updatedPerm);
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '削除';
+        deleteBtn.addEventListener('click', async () => {
+          await window.dataSdk.delete(perm);
+          renderPermissionsList();
+        });
+
+        permItem.appendChild(usernameInput);
+        permItem.appendChild(permissionSelect);
+        permItem.appendChild(deleteBtn);
+        permissionsList.appendChild(permItem);
+      });
+    }
+
+    function addPermissionInput() {
+      const permissionsList = document.getElementById('permissions-list');
+      
+      const permItem = document.createElement('div');
+      permItem.className = 'permission-item';
+
+      const usernameInput = document.createElement('input');
+      usernameInput.type = 'text';
+      usernameInput.placeholder = 'ユーザー名またはシード値';
+
+      const permissionSelect = document.createElement('select');
+      ['viewer', 'editor', 'room-admin'].forEach(role => {
+        const option = document.createElement('option');
+        option.value = role;
+        option.textContent = role === 'viewer' ? '観覧者' : role === 'editor' ? '編集者' : '管理者';
+        permissionSelect.appendChild(option);
+      });
+
+      const saveBtn = document.createElement('button');
+      saveBtn.textContent = '保存';
+      saveBtn.style.background = '#4caf50';
+      saveBtn.addEventListener('click', async () => {
+        const identifier = usernameInput.value.trim();
+        if (!identifier) return;
+
+        const newPermission = {
+          room_id: currentRoomId,
+          user_seed: identifier.startsWith('seed_') ? identifier : '',
+          username: identifier.startsWith('seed_') ? '' : identifier,
+          permission: permissionSelect.value,
+          timestamp: new Date().toISOString(),
+          is_permission: true,
+          message: '',
+          reply_to_id: null,
+          user_role: null
+        };
+
+        await window.dataSdk.create(newPermission);
+        renderPermissionsList();
+      });
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'キャンセル';
+      cancelBtn.style.background = '#9e9e9e';
+      cancelBtn.addEventListener('click', () => {
+        permItem.remove();
+      });
+
+      permItem.appendChild(usernameInput);
+      permItem.appendChild(permissionSelect);
+      permItem.appendChild(saveBtn);
+      permItem.appendChild(cancelBtn);
+      permissionsList.appendChild(permItem);
+    }
+
+    function renderPublicRooms() {
+      const publicRoomsList = document.getElementById('public-rooms-list');
+      
+      if (publicRooms.length === 0) {
+        publicRoomsList.innerHTML = '<div style="text-align: center; color: #999; font-size: 13px;">公開ルームはまだありません</div>';
+        return;
+      }
+
+      publicRoomsList.innerHTML = '';
+      
+      publicRooms.forEach(room => {
+        const roomDiv = document.createElement('div');
+        roomDiv.style.cssText = 'padding: 10px; margin-bottom: 8px; background: white; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; border: 2px solid #e0e0e0;';
+        
+        roomDiv.onmouseenter = () => {
+          roomDiv.style.borderColor = '#667eea';
+          roomDiv.style.transform = 'translateX(4px)';
+        };
+        
+        roomDiv.onmouseleave = () => {
+          roomDiv.style.borderColor = '#e0e0e0';
+          roomDiv.style.transform = 'translateX(0)';
+        };
+        
+        roomDiv.onclick = () => {
+          document.getElementById('room-id-input').value = room.room_id;
+          currentRoom = 'private';
+          currentRoomId = room.room_id;
+          
+          document.querySelectorAll('.room-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.room === 'private') {
+              btn.classList.add('active');
+            }
+          });
+          
+          document.getElementById('room-input-group').style.display = 'flex';
+          document.getElementById('public-room-controls').style.display = 'block';
+          
+          updateRoomInfo(room.room_id);
+          updatePermissionStatus();
+          renderMessages();
+          document.getElementById('menu-overlay').classList.remove('active');
+        };
+        
+        const roomTitle = document.createElement('div');
+        roomTitle.style.cssText = 'font-weight: 700; color: #667eea; font-size: 14px; margin-bottom: 4px;';
+        roomTitle.textContent = 'ルーム: ' + room.room_id;
+        
+        const roomDesc = document.createElement('div');
+        roomDesc.style.cssText = 'font-size: 12px; color: #666; margin-bottom: 4px;';
+        roomDesc.textContent = room.room_description || '説明なし';
+        
+        const roomCreator = document.createElement('div');
+        roomCreator.style.cssText = 'font-size: 11px; color: #999;';
+        roomCreator.textContent = '作成者: ' + room.username;
+        
+        roomDiv.appendChild(roomTitle);
+        roomDiv.appendChild(roomDesc);
+        roomDiv.appendChild(roomCreator);
+        
+        publicRoomsList.appendChild(roomDiv);
+      });
+    }
+
+    async function deleteAllMessages() {
+      const confirmBtn = document.getElementById('confirm-delete-all');
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = '削除中...';
+
+      const messagesToDelete = allMessages.filter(msg => msg.room_id === currentRoomId);
+      
+      for (const msg of messagesToDelete) {
+        await window.dataSdk.delete(msg);
+      }
+
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '削除する';
+    }
+
+    function renderDeveloperRooms() {
+      if (userRole !== 'developer') return;
+      
+      const developerRoomsList = document.getElementById('developer-rooms-list');
+      
+      const privateRoomIds = [...new Set(allMessages
+        .filter(msg => msg.room_id !== 'shared')
+        .map(msg => msg.room_id))];
+      
+      if (privateRoomIds.length === 0) {
+        developerRoomsList.innerHTML = '<div style="text-align: center; color: #999; font-size: 13px;">プライベートルームはまだありません</div>';
+        return;
+      }
+
+      developerRoomsList.innerHTML = '';
+      
+      privateRoomIds.forEach(roomId => {
+        const roomMessages = allMessages.filter(msg => msg.room_id === roomId);
+        const messageCount = roomMessages.length;
+        const lastMessage = roomMessages[roomMessages.length - 1];
+        
+        const roomDiv = document.createElement('div');
+        roomDiv.style.cssText = 'padding: 10px; margin-bottom: 8px; background: white; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; border: 2px solid #e0e0e0;';
+        
+        roomDiv.onmouseenter = () => {
+          roomDiv.style.borderColor = '#4444ff';
+          roomDiv.style.transform = 'translateX(4px)';
+        };
+        
+        roomDiv.onmouseleave = () => {
+          roomDiv.style.borderColor = '#e0e0e0';
+          roomDiv.style.transform = 'translateX(0)';
+        };
+        
+        roomDiv.onclick = () => {
+          document.getElementById('room-id-input').value = roomId;
+          currentRoom = 'private';
+          currentRoomId = roomId;
+          
+          document.querySelectorAll('.room-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.room === 'private') {
+              btn.classList.add('active');
+            }
+          });
+          
+          document.getElementById('room-input-group').style.display = 'flex';
+          document.getElementById('public-room-controls').style.display = 'block';
+          
+          updateRoomInfo(roomId);
+          updatePermissionStatus();
+          renderMessages();
+          document.getElementById('menu-overlay').classList.remove('active');
+        };
+        
+        const roomTitle = document.createElement('div');
+        roomTitle.style.cssText = 'font-weight: 700; color: #4444ff; font-size: 14px; margin-bottom: 4px;';
+        roomTitle.textContent = 'ルーム: ' + roomId;
+        
+        const roomInfo = document.createElement('div');
+        roomInfo.style.cssText = 'font-size: 12px; color: #666; margin-bottom: 4px;';
+        roomInfo.textContent = `メッセージ数: ${messageCount}件`;
+        
+        const lastActivity = document.createElement('div');
+        lastActivity.style.cssText = 'font-size: 11px; color: #999;';
+        if (lastMessage) {
+          lastActivity.textContent = '最終投稿: ' + new Date(lastMessage.timestamp).toLocaleString('ja-JP');
+        }
+        
+        roomDiv.appendChild(roomTitle);
+        roomDiv.appendChild(roomInfo);
+        roomDiv.appendChild(lastActivity);
+        
+        developerRoomsList.appendChild(roomDiv);
+      });
+    }
+
+    function updateRoleStatus() {
+      const statusElement = document.getElementById('admin-status');
+      if (userRole === 'admin') {
+        statusElement.textContent = '管理者';
+        statusElement.className = 'admin-status logged-in';
+        statusElement.style.background = '#ffe6e6';
+        statusElement.style.color = '#ff4444';
+      } else if (userRole === 'developer') {
+        statusElement.textContent = '開発者';
+        statusElement.className = 'admin-status logged-in';
+        statusElement.style.background = '#e6e6ff';
+        statusElement.style.color = '#4444ff';
+      } else {
+        statusElement.textContent = '';
+        statusElement.className = 'admin-status';
+      }
+    }
+
+    function switchRoom(roomType) {
+      currentRoom = roomType;
+      
+      document.querySelectorAll('.room-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.room === roomType) {
+          btn.classList.add('active');
+        }
+      });
+
+      const roomInputGroup = document.getElementById('room-input-group');
+      const publicRoomControls = document.getElementById('public-room-controls');
+      
+      if (roomType === 'private') {
+        roomInputGroup.style.display = 'flex';
+        publicRoomControls.style.display = 'block';
+        currentRoomId = document.getElementById('room-id-input').value.trim() || 'private_default';
+      } else {
+        roomInputGroup.style.display = 'none';
+        publicRoomControls.style.display = 'none';
+        currentRoomId = 'shared';
+      }
+
+      updateRoomInfo(currentRoomId);
+      updatePermissionStatus();
+      renderMessages();
+    }
+
+    function updateRoomInfo(roomId) {
+      const roomName = roomId === 'shared' 
+        ? (window.elementSdk?.config?.shared_room_name || defaultConfig.shared_room_name)
+        : 'プライベート: ' + roomId;
+      document.getElementById('current-room-name').textContent = roomName;
+      document.getElementById('current-room-name-compact').textContent = roomName;
+    }
+
+    function renderMessages() {
+      const chatArea = document.getElementById('chat-area');
+      const filteredMessages = allMessages.filter(msg => msg.room_id === currentRoomId);
+      
+      if (filteredMessages.length === 0) {
+        chatArea.innerHTML = '<div class="loading">このルームにはまだメッセージがありません</div>';
+        return;
+      }
+
+      chatArea.innerHTML = '';
+      
+      filteredMessages.forEach(msg => {
+        const isMyMessage = msg.user_seed === userSeed;
+        const messageDiv = document.createElement('div');
+        let messageClass = 'message' + (msg.reply_to_id ? ' reply' : '');
+        
+        if (msg.user_role === 'admin') {
+          messageClass += ' user-admin';
+        } else if (msg.user_role === 'developer') {
+          messageClass += ' user-developer';
+        }
+
+        if (isMyMessage) {
+          messageClass += ' my-message';
+        }
+
+        messageDiv.className = messageClass;
+        
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'message-header';
+        
+        const usernameDiv = document.createElement('span');
+        usernameDiv.className = 'username';
+        
+        const usernameText = document.createElement('span');
+        usernameText.textContent = msg.username;
+        usernameDiv.appendChild(usernameText);
+        
+        if (isMyMessage) {
+          const myTag = document.createElement('span');
+          myTag.className = 'my-tag';
+          myTag.textContent = 'あなた';
+          usernameDiv.appendChild(myTag);
+        }
+        
+        if (msg.user_role === 'admin') {
+          const roleTag = document.createElement('span');
+          roleTag.className = 'role-tag admin';
+          roleTag.textContent = '管理者';
+          usernameDiv.appendChild(roleTag);
+        } else if (msg.user_role === 'developer') {
+          const roleTag = document.createElement('span');
+          roleTag.className = 'role-tag developer';
+          roleTag.textContent = '開発者';
+          usernameDiv.appendChild(roleTag);
+        }
+
+        if (currentRoom === 'private') {
+          const userPermission = getRoomPermission(currentRoomId, msg.user_seed, msg.username);
+          if (userPermission === 'room-admin') {
+            const roleTag = document.createElement('span');
+            roleTag.className = 'role-tag room-admin';
+            roleTag.textContent = 'ルーム管理者';
+            usernameDiv.appendChild(roleTag);
+          } else if (userPermission === 'editor') {
+            const roleTag = document.createElement('span');
+            roleTag.className = 'role-tag editor';
+            roleTag.textContent = '編集者';
+            usernameDiv.appendChild(roleTag);
+          } else if (userPermission === 'viewer') {
+            const roleTag = document.createElement('span');
+            roleTag.className = 'role-tag viewer';
+            roleTag.textContent = '観覧者';
+            usernameDiv.appendChild(roleTag);
+          }
+        }
+        
+        const timestamp = document.createElement('span');
+        timestamp.className = 'timestamp';
+        timestamp.textContent = new Date(msg.timestamp).toLocaleString('ja-JP');
+        
+        headerDiv.appendChild(usernameDiv);
+        headerDiv.appendChild(timestamp);
+        
+        if (msg.reply_to_id) {
+          const replyIndicator = document.createElement('div');
+          replyIndicator.className = 'reply-indicator';
+          const originalMsg = allMessages.find(m => m.__backendId === msg.reply_to_id);
+          if (originalMsg) {
+            replyIndicator.textContent = originalMsg.username + 'への返信';
+          }
+          messageDiv.appendChild(replyIndicator);
+        }
+        
+        messageDiv.appendChild(headerDiv);
+        
+        const content = document.createElement('div');
+        content.className = 'message-content';
+        
+        let processedContent = msg.message;
+        try {
+          processedContent = marked.parse(msg.message);
+          processedContent = DOMPurify.sanitize(processedContent);
+        } catch (e) {
+          processedContent = DOMPurify.sanitize(msg.message);
+        }
+        content.innerHTML = processedContent;
+        
+        messageDiv.appendChild(content);
+        
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'message-actions';
+        
+        if (canPost()) {
+          const replyBtn = document.createElement('button');
+          replyBtn.className = 'action-btn';
+          replyBtn.textContent = '返信';
+          replyBtn.onclick = () => {
+            replyToMessage = msg;
+            document.getElementById('reply-preview-text').textContent = 
+              msg.username + 'へ返信: ' + msg.message.substring(0, 50) + '...';
+            document.getElementById('reply-preview').classList.add('active');
+            document.getElementById('message-input').focus();
+          };
+          actionsDiv.appendChild(replyBtn);
+        }
+        
+        if (canDelete() || isMyMessage) {
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'action-btn delete-btn' + (userRole ? ' admin-mode' : '');
+          deleteBtn.textContent = '削除';
+          deleteBtn.onclick = () => {
+            if (canDelete() || isMyMessage) {
+              deleteMessageWithRole(msg.__backendId);
+            }
+          };
+          actionsDiv.appendChild(deleteBtn);
+        }
+        
+        messageDiv.appendChild(actionsDiv);
+        chatArea.appendChild(messageDiv);
+      });
+      
+      chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    window.deleteMessageWithRole = async function(messageId) {
+      const message = allMessages.find(m => m.__backendId === messageId);
+      if (message) {
+        await window.dataSdk.delete(message);
+      }
+    };
+
+    async function sendMessage() {
+      const usernameInput = document.getElementById('username-input');
+      const messageInput = document.getElementById('message-input');
+      const sendBtn = document.getElementById('send-btn');
+      
+      const username = usernameInput.value.trim();
+      const message = messageInput.value.trim();
+      
+      if (!username || !message) {
+        return;
+      }
+
+      if (!canPost()) {
+        const statusElement = document.getElementById('admin-status');
+        statusElement.textContent = '投稿権限がありません';
+        statusElement.className = 'admin-status error';
+        setTimeout(() => {
+          statusElement.textContent = '';
+          statusElement.className = 'admin-status';
+        }, 3000);
+        return;
+      }
+      
+      if (allMessages.length >= 999) {
+        return;
+      }
+      
+      sendBtn.disabled = true;
+      sendBtn.textContent = '送信中...';
+      
+      const newMessage = {
+        room_id: currentRoomId,
+        username: username,
+        message: message,
+        timestamp: new Date().toISOString(),
+        reply_to_id: replyToMessage ? replyToMessage.__backendId : null,
+        user_role: userRole,
+        user_seed: userSeed
+      };
+      
+      const result = await window.dataSdk.create(newMessage);
+      
+      if (result.isOk) {
+        messageInput.value = '';
+        replyToMessage = null;
+        document.getElementById('reply-preview').classList.remove('active');
+      }
+      
+      sendBtn.disabled = false;
+      sendBtn.textContent = '送信';
+    }
+
+    init();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a2ccf7c7493eb9a',t:'MTc2Mzg2MDQ3NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
